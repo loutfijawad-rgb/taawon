@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b5e20"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Taawon – Gestion de coopérative agricole</title>
+<style>
+:root{--p:#2e7d32;--d:#1b5e20;--r:#c0392b;--o:#d68910;--bg:#f4f7f2;--t:#1b2418;--m:#667061}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--t)}
+header{background:var(--d);color:#fff;padding:14px 16px}header h1{margin:0;font-size:20px}header small{opacity:.85}
+nav{display:flex;gap:4px;overflow-x:auto;background:#fff;padding:8px;position:sticky;top:0;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+nav button{flex:1;white-space:nowrap}
+main{max-width:820px;margin:0 auto;padding:12px}
+.card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cfd8ca;border-radius:8px;font-size:15px;margin:3px 0 8px;font-family:inherit}
+label{font-size:13px;color:var(--m)}
+button{border:0;border-radius:8px;padding:10px 12px;font-size:15px;font-weight:600;cursor:pointer;background:#e6ede2;color:var(--t)}
+.pri{background:var(--p);color:#fff}.del{background:#fbe9e7;color:var(--r)}.wa{background:#25d366;color:#fff}.on{background:var(--p);color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.g3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 10px}
+@media(max-width:560px){.grid,.g3{grid-template-columns:1fr}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpis .card b{display:block;font-size:21px;margin-top:4px}
+.alert{border-left:4px solid var(--o);background:#fff8e6}.alert.red{border-color:var(--r);background:#fdecea}
+table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+.right{text-align:right}.muted{color:var(--m);font-size:13px}
+.tag{font-size:12px;padding:2px 8px;border-radius:10px;background:#e6ede2}.tag.paid{background:#e3f4ea;color:var(--p)}.tag.due{background:#fdecea;color:var(--r)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hidden{display:none}h2{font-size:18px;margin:4px 0 12px}
+.lines input{margin:0}
+#doc{background:#fff;padding:32px;max-width:780px;margin:0 auto;font-size:14px;color:#000}
+#doc h1{font-size:24px;margin:0;color:var(--d)}#doc .hd{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px}
+#doc table th{background:#eef4ea}#doc .tot{margin-top:12px;margin-left:auto;width:300px}
+#doc .foot{margin-top:28px;font-size:12px;color:#444;border-top:1px solid #ddd;padding-top:8px}
+@media print{header,nav,.noprint{display:none!important}body{background:#fff}main{padding:0;max-width:none}#doc{padding:0}}
+</style>
+</head>
+<body>
+<header><h1>Taawon 🌾</h1><small>Gestion et facturation pour coopératives agricoles</small></header>
+<nav class="noprint">
+ <button data-t="dash" class="on">Tableau de bord</button><button data-t="collecte">Collecte</button><button data-t="adherents">Adhérents</button><button data-t="paie">Paiement adhérents</button><button data-t="ventes">Ventes & factures</button><button data-t="coop">Ma coopérative</button>
+</nav>
+<main>
+
+<!-- TABLEAU DE BORD -->
+<section id="dash">
+ <div id="alerts"></div>
+ <div class="row" style="margin-bottom:8px"><label>Mois</label><input id="dMonth" type="month" style="width:auto" onchange="renderDash()"></div>
+ <div class="kpis">
+  <div class="card"><span class="muted">Collecte du mois</span><b id="kQty">0</b></div>
+  <div class="card"><span class="muted">Dû aux adhérents (mois)</span><b id="kOwe">0</b></div>
+  <div class="card"><span class="muted">Ventes facturées (mois)</span><b id="kSales">0</b></div>
+  <div class="card"><span class="muted">Marge brute (mois)</span><b id="kMarg">0</b><span class="muted">Ventes − achats aux adhérents</span></div>
+  <div class="card"><span class="muted">Factures clients impayées</span><b id="kDue">0</b><span class="muted" id="kDueN"></span></div>
+  <div class="card"><span class="muted">Reste à payer aux adhérents</span><b id="kRest">0</b><span class="muted">Tous mois confondus</span></div>
+ </div>
+ <div class="card"><h2>Top adhérents du mois</h2><table id="topA"></table>
+  <div class="row"><button onclick="exportCsv('collecte')">⬇ Export collecte (CSV)</button><button onclick="exportCsv('ventes')">⬇ Export ventes (CSV)</button><button onclick="exportCsv('paie')">⬇ Export paiements (CSV)</button></div></div>
+</section>
+
+<!-- COLLECTE -->
+<section id="collecte" class="hidden">
+ <div class="card"><h2>Enregistrer une livraison</h2>
+  <div class="grid">
+   <div><label>Adhérent</label><select id="lAdh"></select></div>
+   <div><label>Date</label><input id="lDate" type="date"></div>
+   <div><label>Quantité (<span class="unit"></span>)</label><input id="lQty" type="number" inputmode="decimal"></div>
+   <div><label>Prix par <span class="unit"></span> (DH)</label><input id="lPrice" type="number" inputmode="decimal"></div>
+   <div><label>Qualité / remarque</label><input id="lNote" placeholder="ex : bonne, acidité 0,8…"></div>
+  </div>
+  <button class="pri" onclick="addLiv()">+ Enregistrer la livraison</button> <span id="lMsg" class="muted"></span>
+ </div>
+ <div class="card"><h2>Avance ou retenue à un adhérent</h2>
+  <p class="muted">Aliment de bétail, engrais, avance en espèces… Elle sera déduite au prochain paiement.</p>
+  <div class="grid"><div><label>Adhérent</label><select id="aAdh"></select></div><div><label>Montant (DH)</label><input id="aAmt" type="number" inputmode="decimal"></div>
+  <div><label>Date</label><input id="aDate" type="date"></div><div><label>Motif</label><input id="aNote" placeholder="ex : 2 sacs d'aliment"></div></div>
+  <button onclick="addAv()">+ Enregistrer l'avance</button></div>
+ <div class="card"><h2>Derniers mouvements</h2><table id="mvList"></table></div>
+</section>
+
+<!-- ADHERENTS -->
+<section id="adherents" class="hidden">
+ <div class="card"><h2>Nouvel adhérent</h2>
+  <div class="grid"><div><label>Nom et prénom</label><input id="hName"></div><div><label>CIN</label><input id="hCin"></div>
+  <div><label>Téléphone (WhatsApp)</label><input id="hTel" inputmode="tel" placeholder="06…"></div><div><label>Douar / commune</label><input id="hVil"></div></div>
+  <button class="pri" onclick="addAdh()">+ Ajouter</button></div>
+ <input id="hq" placeholder="🔍 Rechercher un adhérent…" oninput="renderAdh()">
+ <div class="card"><table id="hList"></table></div>
+</section>
+
+<!-- PAIEMENT ADHERENTS -->
+<section id="paie" class="hidden">
+ <div class="card"><h2>Relevés de paiement</h2>
+  <div class="row"><label>Période du</label><input id="pFrom" type="date" style="width:auto"><label>au</label><input id="pTo" type="date" style="width:auto"><button onclick="renderPaie()">Calculer</button></div>
+  <p class="muted">Pour chaque adhérent : valeur des livraisons − avances de la période − paiements déjà faits pour la période.</p>
+  <table id="paieList"></table></div>
+</section>
+
+<!-- VENTES -->
+<section id="ventes" class="hidden">
+ <div class="row" style="margin-bottom:10px"><button class="pri" onclick="newInv()">+ Nouvelle facture</button></div>
+ <div class="card"><h2>Acheteurs</h2>
+  <div class="grid"><div><label>Raison sociale</label><input id="bName" placeholder="ex : Laiterie, huilerie, grossiste…"></div><div><label>ICE (15 chiffres)</label><input id="bIce" inputmode="numeric" maxlength="15"></div>
+  <div><label>Adresse</label><input id="bAddr"></div><div><label>Contact</label><input id="bTel"></div></div>
+  <button onclick="addBuyer()">+ Ajouter l'acheteur</button><table id="bList" style="margin-top:8px"></table></div>
+ <div class="card"><h2>Factures</h2><table id="invList"></table></div>
+</section>
+
+<!-- EDITEUR FACTURE -->
+<section id="edit" class="hidden">
+ <div class="card"><h2 id="eTitle"></h2>
+  <div class="grid"><div><label>Acheteur</label><select id="eBuyer"></select></div><div><label>Date</label><input id="eDate" type="date"></div>
+  <div><label>Échéance</label><input id="eDue" type="date"></div><div><label>Mode de paiement</label><select id="ePay"><option>Virement</option><option>Chèque</option><option>Espèces</option><option>Effet</option></select></div></div>
+  <table class="lines"><thead><tr><th>Désignation</th><th style="width:80px">Qté</th><th style="width:70px">Unité</th><th style="width:100px">PU HT (DH)</th><th class="right" style="width:100px">Total HT</th><th></th></tr></thead><tbody id="eLines"></tbody></table>
+  <button onclick="addLine()" style="margin-top:6px">+ Ligne</button>
+  <p class="right" id="eTotals"></p>
+  <label>Notes (optionnel)</label><textarea id="eNotes" rows="2"></textarea>
+  <div class="row"><button class="pri" onclick="saveInv()">Enregistrer la facture</button><button onclick="show('ventes')">Annuler</button></div></div>
+</section>
+
+<!-- APERCU DOCUMENT -->
+<section id="view" class="hidden">
+ <div class="row noprint" style="margin-bottom:10px"><button id="vBack">← Retour</button><button class="pri" onclick="window.print()">🖨 Imprimer / PDF</button>
+  <button id="vEdit">Modifier</button><button id="vPaid">Marquer payée</button><button id="vWa" class="wa">📲 Envoyer par WhatsApp</button></div>
+ <div id="doc"></div>
+</section>
+
+<!-- COOPERATIVE -->
+<section id="coop" class="hidden">
+ <div class="card"><h2>Ma coopérative</h2><p class="muted">Ces informations apparaissent sur les factures et relevés.</p>
+  <div class="grid">
+   <div><label>Nom de la coopérative</label><input id="cName"></div>
+   <div><label>Produit principal</label><input id="cProd" placeholder="ex : Lait cru, olives, argan, miel…"></div>
+   <div><label>Unité de collecte</label><select id="cUnit"><option>L</option><option>kg</option><option>tonne</option><option>caisse</option></select></div>
+   <div><label>Prix par défaut payé aux adhérents (DH / unité)</label><input id="cPrice" type="number" inputmode="decimal"></div>
+   <div><label>ICE (15 chiffres)</label><input id="cIce" inputmode="numeric" maxlength="15"></div>
+   <div><label>Identifiant fiscal (IF)</label><input id="cIf"></div>
+   <div><label>N° d'immatriculation au registre des coopératives</label><input id="cRc"></div>
+   <div><label>Adresse</label><input id="cAddr"></div>
+   <div><label>Téléphone</label><input id="cTel"></div>
+   <div><label>RIB</label><input id="cRib"></div>
+   <div><label>TVA appliquée sur les ventes</label><select id="cTva"><option value="0">Exonéré / non applicable</option><option value="7">7 %</option><option value="10">10 %</option><option value="14">14 %</option><option value="20">20 %</option></select></div>
+   <div><label>Mention TVA sur la facture (si exonéré)</label><input id="cTvaTxt" placeholder="ex : Exonéré de TVA – art. … du CGI"></div>
+  </div>
+  <button class="pri" onclick="saveCoop()">Enregistrer</button> <span id="cSaved" class="muted"></span>
+  <p class="muted">Le régime de TVA dépend de ton activité et de ton chiffre d'affaires : fais valider le taux et la mention par ton comptable.</p></div>
+ <div class="card"><div class="row"><button onclick="backup()">⬇ Sauvegarder les données</button><label class="row" style="color:var(--t)"><input type="file" accept=".json" onchange="restore(this)" style="width:auto"> Restaurer</label><button onclick="demo()">Charger des données d'exemple</button></div>
+  <p class="muted">Les données restent dans ce navigateur. Pense à sauvegarder régulièrement.</p></div>
+</section>
+</main>
+
+<script>
+const K='taawon_v1';
+const blank=()=>({coop:{unit:'L',tva:'0',tvatxt:'Exonéré de TVA'},adh:[],liv:[],av:[],pay:[],buyers:[],inv:[],seq:{}});
+let db=JSON.parse(localStorage.getItem(K)||'null')||blank();
+const save=()=>localStorage.setItem(K,JSON.stringify(db));
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const fmt=n=>(Number(n)||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2})+' DH';
+const num=n=>(Number(n)||0).toLocaleString('fr-MA',{maximumFractionDigits:2});
+const today=()=>new Date().toISOString().slice(0,10);
+const fr=s=>s?new Date(s).toLocaleDateString('fr-MA'):'';
+const U=()=>db.coop.unit||'L';
+const adhName=id=>(db.adh.find(a=>a.id==id)||{}).name||'?';
+const ht=i=>i.lines.reduce((s,l)=>s+(+l.q||0)*(+l.p||0),0);
+const ttc=i=>ht(i)*(1+(+i.tva||0)/100);
+const inRange=(d,a,b)=>d>=a&&d<=b;
+let editing=null,backTo='ventes';
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+function show(t){['dash','collecte','adherents','paie','ventes','edit','view','coop'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t||(b.dataset.t==='ventes'&&t==='edit')));
+ document.querySelectorAll('.unit').forEach(e=>e.textContent=U());
+ ({dash:renderDash,collecte:renderCollecte,adherents:renderAdh,paie:renderPaie,ventes:renderVentes,coop:loadCoop})[t]?.();}
+const opts=()=>db.adh.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+const validIce=v=>!v||/^\d{15}$/.test(v);
+
+// Coopérative
+const CF={Name:'name',Prod:'prod',Unit:'unit',Price:'price',Ice:'ice',If:'if',Rc:'rc',Addr:'addr',Tel:'tel',Rib:'rib',Tva:'tva',TvaTxt:'tvatxt'};
+function loadCoop(){for(const f in CF)$('c'+f).value=db.coop[CF[f]]??'';}
+function saveCoop(){if(!validIce($('cIce').value.trim()))return alert("L'ICE doit contenir 15 chiffres.");for(const f in CF)db.coop[CF[f]]=$('c'+f).value.trim();save();$('cSaved').textContent='✓ Enregistré';setTimeout(()=>$('cSaved').textContent='',2000);}
+
+// Adhérents
+function addAdh(){const n=$('hName').value.trim();if(!n)return alert('Nom requis');db.adh.push({id:Date.now(),name:n,cin:$('hCin').value.trim(),tel:$('hTel').value.trim(),vil:$('hVil').value.trim()});['hName','hCin','hTel','hVil'].forEach(i=>$(i).value='');save();renderAdh();}
+function balance(id){return db.liv.filter(l=>l.adh==id).reduce((s,l)=>s+l.q*l.p,0)-db.av.filter(a=>a.adh==id).reduce((s,a)=>s+a.amt,0)-db.pay.filter(p=>p.adh==id).reduce((s,p)=>s+p.amt,0);}
+function renderAdh(){const q=$('hq').value.toLowerCase();
+ $('hList').innerHTML='<tr><th>Adhérent</th><th>Douar</th><th class="right">Livré (total)</th><th class="right">Solde dû</th><th></th></tr>'+db.adh.filter(a=>(a.name+a.vil+a.cin).toLowerCase().includes(q)).map(a=>{const tq=db.liv.filter(l=>l.adh==a.id).reduce((s,l)=>s+l.q,0);
+ return `<tr><td><b>${esc(a.name)}</b><div class="muted">CIN ${esc(a.cin)||'—'} · ${esc(a.tel)}</div></td><td>${esc(a.vil)}</td><td class="right">${num(tq)} ${U()}</td><td class="right">${fmt(balance(a.id))}</td><td><button class="del" onclick="delAdh(${a.id})">🗑</button></td></tr>`}).join('');}
+function delAdh(id){if(db.liv.some(l=>l.adh==id)||db.av.some(a=>a.adh==id))return alert("Cet adhérent a des mouvements, il ne peut pas être supprimé.");if(confirm('Supprimer ?')){db.adh=db.adh.filter(a=>a.id!==id);save();renderAdh();}}
+
+// Collecte & avances
+function renderCollecte(){if(!db.adh.length){alert("Ajoute d'abord des adhérents.");return show('adherents');}
+ $('lAdh').innerHTML=$('aAdh').innerHTML=opts();if(!$('lDate').value)$('lDate').value=$('aDate').value=today();if(!$('lPrice').value)$('lPrice').value=db.coop.price||'';
+ const mv=[...db.liv.map(l=>({...l,t:'L'})),...db.av.map(a=>({...a,t:'A'}))].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,30);
+ $('mvList').innerHTML='<tr><th>Date</th><th>Adhérent</th><th>Mouvement</th><th class="right">Montant</th><th></th></tr>'+mv.map(m=>`<tr><td>${fr(m.date)}</td><td>${esc(adhName(m.adh))}</td><td>${m.t==='L'?`Livraison ${num(m.q)} ${U()} × ${fmt(m.p)}${m.note?' · '+esc(m.note):''}`:'Avance · '+esc(m.note)}</td><td class="right" style="color:${m.t==='L'?'var(--p)':'var(--r)'}">${m.t==='L'?fmt(m.q*m.p):'−'+fmt(m.amt)}</td><td><button class="del" onclick="delMv('${m.t}',${m.id})">✕</button></td></tr>`).join('');}
+function addLiv(){const q=+$('lQty').value,p=+$('lPrice').value;if(!(q>0)||!(p>=0)||!$('lPrice').value)return alert('Quantité et prix requis');
+ db.liv.push({id:Date.now(),adh:+$('lAdh').value,date:$('lDate').value,q,p,note:$('lNote').value.trim()});$('lQty').value=$('lNote').value='';save();
+ $('lMsg').textContent='✓ '+adhName($('lAdh').value)+' : '+num(q)+' '+U();renderCollecte();$('lQty').focus();}
+function addAv(){const a=+$('aAmt').value;if(!(a>0))return alert('Montant requis');db.av.push({id:Date.now(),adh:+$('aAdh').value,date:$('aDate').value,amt:a,note:$('aNote').value.trim()});$('aAmt').value=$('aNote').value='';save();renderCollecte();}
+function delMv(t,id){if(!confirm('Supprimer ce mouvement ?'))return;if(t==='L')db.liv=db.liv.filter(x=>x.id!==id);else db.av=db.av.filter(x=>x.id!==id);save();renderCollecte();}
+
+// Paiement adhérents
+function period(){if(!$('pFrom').value){const d=new Date(),y=d.getFullYear(),m=d.getMonth(),z=n=>String(n).padStart(2,'0');
+ $('pFrom').value=`${y}-${z(m+1)}-01`;$('pTo').value=`${y}-${z(m+1)}-${z(new Date(y,m+1,0).getDate())}`;}return [$('pFrom').value,$('pTo').value];}
+function stmt(id,a,b){const L=db.liv.filter(l=>l.adh==id&&inRange(l.date,a,b)),A=db.av.filter(x=>x.adh==id&&inRange(x.date,a,b)),P=db.pay.filter(p=>p.adh==id&&p.from===a&&p.to===b);
+ const val=L.reduce((s,l)=>s+l.q*l.p,0),av=A.reduce((s,x)=>s+x.amt,0),paid=P.reduce((s,p)=>s+p.amt,0);return {L,A,P,qty:L.reduce((s,l)=>s+l.q,0),val,av,paid,net:val-av-paid};}
+function renderPaie(){const [a,b]=period();let T=0;
+ const rows=db.adh.map(h=>({h,s:stmt(h.id,a,b)})).filter(r=>r.s.L.length||r.s.A.length||r.s.P.length);
+ $('paieList').innerHTML=rows.length?'<tr><th>Adhérent</th><th class="right">Livré</th><th class="right">Valeur</th><th class="right">Avances</th><th class="right">Déjà payé</th><th class="right">Net à payer</th><th></th></tr>'+rows.map(({h,s})=>{T+=Math.max(0,s.net);
+ return `<tr><td><b>${esc(h.name)}</b></td><td class="right">${num(s.qty)} ${U()}</td><td class="right">${fmt(s.val)}</td><td class="right">−${fmt(s.av)}</td><td class="right">${fmt(s.paid)}</td><td class="right"><b>${fmt(s.net)}</b></td>
+ <td class="row" style="flex-wrap:nowrap"><button onclick="viewStmt(${h.id})">Relevé</button>${s.net>0.005?`<button class="pri" onclick="payAdh(${h.id})">Payer</button>`:'<span class="tag paid">Réglé</span>'}</td></tr>`}).join('')+`<tr><th colspan="5">Total net à payer</th><th class="right">${fmt(T)}</th><th></th></tr>`:'<tr><td class="muted">Aucun mouvement sur cette période.</td></tr>';}
+function payAdh(id){const [a,b]=period(),s=stmt(id,a,b);const v=prompt('Montant payé à '+adhName(id)+' (DH) :',s.net.toFixed(2));if(v===null)return;const n=+v;if(!(n>0))return alert('Montant invalide');
+ const m=prompt('Mode de paiement (Espèces, Virement, Chèque) :','Espèces')||'Espèces';db.pay.push({id:Date.now(),adh:id,from:a,to:b,date:today(),amt:n,mode:m});save();renderPaie();}
+function viewStmt(id){const [a,b]=period(),s=stmt(id,a,b),h=db.adh.find(x=>x.id==id),c=db.coop;backTo='paie';
+ $('doc').innerHTML=`<div class="hd"><div><h1>RELEVÉ ADHÉRENT</h1><p>Période du ${fr(a)} au ${fr(b)}</p></div><div style="text-align:right"><b>${esc(c.name)}</b><br>${esc(c.addr)}<br>${esc(c.tel)}</div></div>
+ <p><b>${esc(h.name)}</b><br>CIN : ${esc(h.cin)||'—'} · ${esc(h.vil)}</p>
+ <table><tr><th>Date</th><th>Détail</th><th class="right">Montant</th></tr>${s.L.map(l=>`<tr><td>${fr(l.date)}</td><td>Livraison ${num(l.q)} ${U()} × ${fmt(l.p)}${l.note?' ('+esc(l.note)+')':''}</td><td class="right">${fmt(l.q*l.p)}</td></tr>`).join('')}
+ ${s.A.map(x=>`<tr><td>${fr(x.date)}</td><td>Avance : ${esc(x.note)}</td><td class="right">−${fmt(x.amt)}</td></tr>`).join('')}${s.P.map(p=>`<tr><td>${fr(p.date)}</td><td>Paiement (${esc(p.mode)})</td><td class="right">−${fmt(p.amt)}</td></tr>`).join('')}</table>
+ <table class="tot"><tr><td>Quantité livrée</td><td class="right">${num(s.qty)} ${U()}</td></tr><tr><td>Valeur des livraisons</td><td class="right">${fmt(s.val)}</td></tr><tr><td>Avances</td><td class="right">−${fmt(s.av)}</td></tr><tr><td>Déjà payé</td><td class="right">−${fmt(s.paid)}</td></tr><tr><th>Reste à payer</th><th class="right">${fmt(s.net)}</th></tr></table>
+ <p style="margin-top:40px">Signature de l'adhérent :</p>`;
+ $('vEdit').classList.add('hidden');$('vPaid').classList.add('hidden');
+ $('vWa').onclick=()=>wa(h.tel,`Salam ${h.name}, relevé ${c.name||'de la coopérative'} du ${fr(a)} au ${fr(b)} : ${num(s.qty)} ${U()} livrés, valeur ${fmt(s.val)}, avances ${fmt(s.av)}, déjà payé ${fmt(s.paid)}. Reste à payer : ${fmt(s.net)}.`);
+ show('view');}
+function wa(tel,msg){let t=String(tel||'').replace(/\D/g,'');if(!t)return alert("Pas de numéro de téléphone.");if(t.startsWith('0'))t='212'+t.slice(1);window.open('https://wa.me/'+t+'?text='+encodeURIComponent(msg),'_blank');}
+
+// Ventes
+function addBuyer(){const n=$('bName').value.trim();if(!n)return alert('Nom requis');if(!validIce($('bIce').value.trim()))return alert("L'ICE doit contenir 15 chiffres.");
+ db.buyers.push({id:Date.now(),name:n,ice:$('bIce').value.trim(),addr:$('bAddr').value.trim(),tel:$('bTel').value.trim()});['bName','bIce','bAddr','bTel'].forEach(i=>$(i).value='');save();renderVentes();}
+function renderVentes(){$('bList').innerHTML=db.buyers.map(b=>`<tr><td><b>${esc(b.name)}</b></td><td>ICE ${esc(b.ice)||'—'}</td><td>${esc(b.addr)}</td></tr>`).join('');
+ const L=[...db.inv].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ $('invList').innerHTML=L.length?'<tr><th>N°</th><th>Acheteur</th><th>Date</th><th class="right">TTC</th><th>Statut</th></tr>'+L.map(i=>`<tr style="cursor:pointer" onclick="viewInv(${i.id})"><td><b>${i.num}</b></td><td>${esc((db.buyers.find(b=>b.id==i.buyer)||{}).name)}</td><td>${fr(i.date)}</td><td class="right">${fmt(ttc(i))}</td><td>${i.paid?'<span class="tag paid">Payée</span>':i.due<today()?'<span class="tag due">En retard</span>':'<span class="tag">À payer</span>'}</td></tr>`).join(''):'<tr><td class="muted">Aucune facture.</td></tr>';}
+function nextNum(date){const y=new Date(date).getFullYear();db.seq[y]=(db.seq[y]||0)+1;return 'FAC-'+y+'-'+String(db.seq[y]).padStart(4,'0');}
+function newInv(){if(!db.coop.name||!db.coop.ice){alert("Complète d'abord la fiche de la coopérative (nom et ICE).");return show('coop');}if(!db.buyers.length)return alert("Ajoute d'abord un acheteur.");
+ const d=new Date();d.setDate(d.getDate()+30);editing={id:null,buyer:db.buyers[0].id,date:today(),due:d.toISOString().slice(0,10),pay:'Virement',tva:db.coop.tva||'0',lines:[{l:db.coop.prod||'',q:1,u:U(),p:0}],notes:'',paid:false};openEditor();}
+function openEditor(){const e=editing;$('eTitle').textContent=e.id?'Modifier '+e.num:'Nouvelle facture';$('eBuyer').innerHTML=db.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+ $('eBuyer').value=e.buyer;$('eDate').value=e.date;$('eDue').value=e.due;$('ePay').value=e.pay;$('eNotes').value=e.notes;drawLines();show('edit');}
+function drawLines(){$('eLines').innerHTML=editing.lines.map((l,i)=>`<tr><td><input value="${esc(l.l)}" oninput="editing.lines[${i}].l=this.value"></td><td><input type="number" value="${l.q}" oninput="editing.lines[${i}].q=this.value;upd()"></td><td><input value="${esc(l.u)}" oninput="editing.lines[${i}].u=this.value"></td><td><input type="number" value="${l.p}" oninput="editing.lines[${i}].p=this.value;upd()"></td><td class="right" id="lt${i}"></td><td><button class="del" onclick="editing.lines.splice(${i},1);drawLines()">✕</button></td></tr>`).join('');upd();}
+function upd(){editing.lines.forEach((l,i)=>$('lt'+i).textContent=fmt(l.q*l.p));const t=+editing.tva;$('eTotals').innerHTML=`Total HT : <b>${fmt(ht(editing))}</b> · TVA ${t?t+' %':'—'} : ${fmt(ht(editing)*t/100)} · <b style="font-size:18px">TTC : ${fmt(ttc(editing))}</b>`;}
+function addLine(){editing.lines.push({l:'',q:1,u:U(),p:0});drawLines();}
+function saveInv(){const e=editing;e.buyer=+$('eBuyer').value;e.date=$('eDate').value;e.due=$('eDue').value;e.pay=$('ePay').value;e.notes=$('eNotes').value.trim();
+ e.lines=e.lines.filter(l=>l.l.trim()&&+l.q>0);if(!e.lines.length)return alert('Ajoute au moins une ligne.');
+ if(!e.id){e.id=Date.now();e.num=nextNum(e.date);db.inv.push(e);}else db.inv[db.inv.findIndex(i=>i.id===e.id)]=e;save();viewInv(e.id);}
+function viewInv(id){const i=db.inv.find(x=>x.id===id),b=db.buyers.find(x=>x.id==i.buyer)||{},c=db.coop,t=+i.tva;backTo='ventes';
+ $('doc').innerHTML=`<div class="hd"><div><h1>FACTURE</h1><p><b>N° ${i.num}</b><br>Date : ${fr(i.date)}<br>Échéance : ${fr(i.due)}</p></div>
+ <div style="text-align:right"><b>${esc(c.name)}</b><br>Coopérative agricole<br>${esc(c.addr)}<br>${esc(c.tel)}</div></div>
+ <div style="margin-bottom:18px"><span class="muted">Facturé à</span><br><b>${esc(b.name)}</b><br>${esc(b.addr)}${b.ice?'<br>ICE : '+esc(b.ice):''}</div>
+ <table><tr><th>Désignation</th><th class="right">Qté</th><th>Unité</th><th class="right">PU HT</th><th class="right">Total HT</th></tr>${i.lines.map(l=>`<tr><td>${esc(l.l)}</td><td class="right">${num(l.q)}</td><td>${esc(l.u)}</td><td class="right">${fmt(l.p)}</td><td class="right">${fmt(l.q*l.p)}</td></tr>`).join('')}</table>
+ <table class="tot"><tr><td>Total HT</td><td class="right">${fmt(ht(i))}</td></tr><tr><td>TVA ${t?t+' %':''}</td><td class="right">${t?fmt(ht(i)*t/100):esc(c.tvatxt||'Exonéré')}</td></tr><tr><th>Total TTC</th><th class="right">${fmt(ttc(i))}</th></tr></table>
+ <p><b>Arrêtée la présente facture à la somme de : ${enLettres(ttc(i))}.</b></p><p>Mode de paiement : ${esc(i.pay)}${c.rib&&i.pay==='Virement'?' · RIB : '+esc(c.rib):''}</p>${i.notes?'<p>'+esc(i.notes)+'</p>':''}
+ <div class="foot">${esc(c.name)} · ICE : ${esc(c.ice)}${c.if?' · IF : '+esc(c.if):''}${c.rc?' · Immatriculation : '+esc(c.rc):''}${c.rib?' · RIB : '+esc(c.rib):''}</div>`;
+ $('vEdit').classList.remove('hidden');$('vPaid').classList.remove('hidden');
+ $('vEdit').onclick=()=>{editing=JSON.parse(JSON.stringify(i));openEditor();};
+ $('vPaid').textContent=i.paid?'Marquer impayée':'Marquer payée';$('vPaid').onclick=()=>{i.paid=!i.paid;i.paidDate=i.paid?today():null;save();viewInv(i.id);};
+ $('vWa').onclick=()=>wa(b.tel,`Bonjour, voici notre facture ${i.num} du ${fr(i.date)} d'un montant de ${fmt(ttc(i))}, échéance le ${fr(i.due)}. ${c.name}`);
+ show('view');}
+$('vBack').onclick=()=>show(backTo);
+
+function enLettres(n){const ent=Math.floor(n),cts=Math.round((n-ent)*100);
+ const u=['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'],d=['','dix','vingt','trente','quarante','cinquante','soixante','soixante','quatre-vingt','quatre-vingt'];
+ const c99=x=>{if(x<20)return u[x];const t=Math.floor(x/10),r=x%10;if(t===7||t===9)return d[t]+(t===7&&r===1?'-et-':'-')+u[10+r];return d[t]+(r===1&&t<8?'-et-un':r?'-'+u[r]:(t===8?'s':''));};
+ const c999=x=>{const h=Math.floor(x/100),r=x%100;let s=h?(h>1?u[h]+' cent'+(r?'':'s'):'cent'):'';if(r)s+=(s?' ':'')+c99(r);return s;};
+ const w=x=>{if(x===0)return'zéro';let s='';const m=Math.floor(x/1e6),k=Math.floor(x%1e6/1000),r=x%1000;if(m)s+=c999(m)+' million'+(m>1?'s':'');if(k)s+=(s?' ':'')+(k===1?'mille':c999(k).replace(/cents$/,'cent')+' mille');if(r)s+=(s?' ':'')+c999(r);return s;};
+ return w(ent)+' dirham'+(ent>1?'s':'')+(cts?' et '+w(cts)+' centime'+(cts>1?'s':''):'');}
+
+// Tableau de bord
+function renderDash(){if(!$('dMonth').value)$('dMonth').value=today().slice(0,7);const m=$('dMonth').value;
+ const L=db.liv.filter(l=>l.date.startsWith(m)),I=db.inv.filter(i=>i.date.startsWith(m));
+ const qty=L.reduce((s,l)=>s+l.q,0),owe=L.reduce((s,l)=>s+l.q*l.p,0),sales=I.reduce((s,i)=>s+ht(i),0);
+ $('kQty').textContent=num(qty)+' '+U();$('kOwe').textContent=fmt(owe);$('kSales').textContent=fmt(sales);$('kMarg').textContent=fmt(sales-owe);$('kMarg').style.color=sales-owe<0?'var(--r)':'';
+ const due=db.inv.filter(i=>!i.paid);$('kDue').textContent=fmt(due.reduce((s,i)=>s+ttc(i),0));$('kDueN').textContent=due.length+' facture(s), dont '+due.filter(i=>i.due<today()).length+' en retard';
+ $('kRest').textContent=fmt(db.adh.reduce((s,a)=>s+Math.max(0,balance(a.id)),0));
+ const top=db.adh.map(a=>({a,q:L.filter(l=>l.adh==a.id).reduce((s,l)=>s+l.q,0)})).filter(x=>x.q).sort((x,y)=>y.q-x.q).slice(0,5);
+ $('topA').innerHTML=top.length?top.map(x=>`<tr><td>${esc(x.a.name)}</td><td class="right">${num(x.q)} ${U()}</td></tr>`).join(''):'<tr><td class="muted">Aucune livraison ce mois-ci.</td></tr>';
+ const al=[];if(!db.coop.name||!db.coop.ice)al.push(['Complète la fiche de ta coopérative (nom, ICE) pour éditer des factures.','']);
+ const late=due.filter(i=>i.due<today());if(late.length)al.push([`${late.length} facture(s) client en retard de paiement pour ${fmt(late.reduce((s,i)=>s+ttc(i),0))}.`,'red']);
+ if(sales&&sales<owe)al.push(['Ce mois-ci, la coopérative a payé plus à ses adhérents qu’elle n’a facturé à ses acheteurs.','']);
+ $('alerts').innerHTML=al.map(([t,c])=>`<div class="card alert ${c}">${t}</div>`).join('');}
+
+function exportCsv(k){let rows;
+ if(k==='collecte')rows=[['date','adherent','cin','quantite','unite','prix_unitaire','montant','remarque'],...db.liv.map(l=>{const a=db.adh.find(x=>x.id==l.adh)||{};return [l.date,a.name,a.cin,l.q,U(),l.p,(l.q*l.p).toFixed(2),l.note]})];
+ if(k==='ventes')rows=[['numero','date','acheteur','ice','total_ht','tva_%','total_ttc','payee'],...db.inv.map(i=>{const b=db.buyers.find(x=>x.id==i.buyer)||{};return [i.num,i.date,b.name,b.ice,ht(i).toFixed(2),i.tva,ttc(i).toFixed(2),i.paid?'oui':'non']})];
+ if(k==='paie')rows=[['date','adherent','periode_du','periode_au','montant','mode'],...db.pay.map(p=>[p.date,adhName(p.adh),p.from,p.to,p.amt.toFixed(2),p.mode])];
+ dl(rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(';')).join('\n'),'taawon-'+k+'.csv','text/csv');}
+function backup(){dl(JSON.stringify(db),'taawon-sauvegarde.json','application/json');}
+function restore(inp){const r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();alert('Données restaurées.');show('dash');}catch{alert('Fichier invalide.')}};r.readAsText(inp.files[0]);}
+function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+txt],{type}));a.download=name;a.click();}
+
+function demo(){if((db.adh.length||db.inv.length)&&!confirm('Remplacer les données actuelles par un exemple ?'))return;
+ db=blank();Object.assign(db.coop,{name:'Coopérative Al Khir (exemple)',prod:'Lait cru',unit:'L',price:'3.9',ice:'000000000000000',addr:'Douar Exemple, Province Exemple',tel:'0600000000'});
+ const names=['Mohamed Amrani','Fatima Zahra Idrissi','Hassan Ouali','Aicha Benali','Brahim Tazi'];names.forEach((n,k)=>db.adh.push({id:k+1,name:n,cin:'X'+(100000+k),tel:'',vil:'Douar '+['Oulad Ali','Ait Brahim','Lahouna'][k%3]}));
+ const d0=new Date();for(let day=0;day<20;day++){const dt=new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()-day,12).toISOString().slice(0,10);
+  db.adh.forEach(a=>db.liv.push({id:Date.now()+Math.random(),adh:a.id,date:dt,q:Math.round(8+a.id*3+Math.random()*6),p:3.9,note:''}));}
+ db.av.push({id:1,adh:2,date:today(),amt:250,note:'2 sacs d\'aliment'});
+ db.buyers.push({id:1,name:'Laiterie Régionale (exemple)',ice:'',addr:'Zone industrielle',tel:''});save();show('dash');}
+show('dash');
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
