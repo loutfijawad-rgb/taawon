@@ -22,8 +22,8 @@ button{border:0;border-radius:8px;padding:10px 12px;font-size:15px;font-weight:6
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
 .kpis .card b{display:block;font-size:21px;margin-top:4px}
 .alert{border-left:4px solid var(--o);background:#fff8e6}.alert.red{border-color:var(--r);background:#fdecea}
-table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
-.right{text-align:right}.muted{color:var(--m);font-size:13px}
+table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:start;font-size:14px}
+.right{text-align:end}.muted{color:var(--m);font-size:13px}
 .tag{font-size:12px;padding:2px 8px;border-radius:10px;background:#e6ede2}.tag.paid{background:#e3f4ea;color:var(--p)}.tag.due{background:#fdecea;color:var(--r)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hidden{display:none}h2{font-size:18px;margin:4px 0 12px}
 .lines input{margin:0}
@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 </style>
 </head>
 <body>
-<header><h1>Taawon 🌾</h1><small>Gestion et facturation pour coopératives agricoles</small></header>
+<header><button id="langBtn" class="noprint" style="float:inline-end;background:#ffffff22;color:#fff;border:1px solid #ffffff66">عربي</button><h1>Taawon 🌾</h1><small>Gestion et facturation pour coopératives agricoles</small></header>
 <nav class="noprint">
  <button data-t="dash" class="on">Tableau de bord</button><button data-t="collecte">Collecte</button><button data-t="adherents">Adhérents</button><button data-t="paie">Paiement adhérents</button><button data-t="ventes">Ventes & factures</button><button data-t="coop">Ma coopérative</button>
 </nav>
@@ -210,15 +210,15 @@ function renderPaie(){const [a,b]=period();let T=0;
  <td class="row" style="flex-wrap:nowrap"><button onclick="viewStmt(${h.id})">Relevé</button>${s.net>0.005?`<button class="pri" onclick="payAdh(${h.id})">Payer</button>`:'<span class="tag paid">Réglé</span>'}</td></tr>`}).join('')+`<tr><th colspan="5">Total net à payer</th><th class="right">${fmt(T)}</th><th></th></tr>`:'<tr><td class="muted">Aucun mouvement sur cette période.</td></tr>';}
 function payAdh(id){const [a,b]=period(),s=stmt(id,a,b);const v=prompt('Montant payé à '+adhName(id)+' (DH) :',s.net.toFixed(2));if(v===null)return;const n=+v;if(!(n>0))return alert('Montant invalide');
  const m=prompt('Mode de paiement (Espèces, Virement, Chèque) :','Espèces')||'Espèces';db.pay.push({id:Date.now(),adh:id,from:a,to:b,date:today(),amt:n,mode:m});save();renderPaie();}
-function viewStmt(id){const [a,b]=period(),s=stmt(id,a,b),h=db.adh.find(x=>x.id==id),c=db.coop;backTo='paie';
- $('doc').innerHTML=`<div class="hd"><div><h1>RELEVÉ ADHÉRENT</h1><p>Période du ${fr(a)} au ${fr(b)}</p></div><div style="text-align:right"><b>${esc(c.name)}</b><br>${esc(c.addr)}<br>${esc(c.tel)}</div></div>
+function viewStmt(id){$('doc').removeAttribute('data-nt');const [a,b]=period(),s=stmt(id,a,b),h=db.adh.find(x=>x.id==id),c=db.coop;backTo='paie';
+ $('doc').innerHTML=`<div class="hd"><div><h1>RELEVÉ ADHÉRENT</h1><p>Période du ${fr(a)} au ${fr(b)}</p></div><div style="text-align:end"><b>${esc(c.name)}</b><br>${esc(c.addr)}<br>${esc(c.tel)}</div></div>
  <p><b>${esc(h.name)}</b><br>CIN : ${esc(h.cin)||'—'} · ${esc(h.vil)}</p>
  <table><tr><th>Date</th><th>Détail</th><th class="right">Montant</th></tr>${s.L.map(l=>`<tr><td>${fr(l.date)}</td><td>Livraison ${num(l.q)} ${U()} × ${fmt(l.p)}${l.note?' ('+esc(l.note)+')':''}</td><td class="right">${fmt(l.q*l.p)}</td></tr>`).join('')}
  ${s.A.map(x=>`<tr><td>${fr(x.date)}</td><td>Avance : ${esc(x.note)}</td><td class="right">−${fmt(x.amt)}</td></tr>`).join('')}${s.P.map(p=>`<tr><td>${fr(p.date)}</td><td>Paiement (${esc(p.mode)})</td><td class="right">−${fmt(p.amt)}</td></tr>`).join('')}</table>
  <table class="tot"><tr><td>Quantité livrée</td><td class="right">${num(s.qty)} ${U()}</td></tr><tr><td>Valeur des livraisons</td><td class="right">${fmt(s.val)}</td></tr><tr><td>Avances</td><td class="right">−${fmt(s.av)}</td></tr><tr><td>Déjà payé</td><td class="right">−${fmt(s.paid)}</td></tr><tr><th>Reste à payer</th><th class="right">${fmt(s.net)}</th></tr></table>
  <p style="margin-top:40px">Signature de l'adhérent :</p>`;
  $('vEdit').classList.add('hidden');$('vPaid').classList.add('hidden');
- $('vWa').onclick=()=>wa(h.tel,`Salam ${h.name}, relevé ${c.name||'de la coopérative'} du ${fr(a)} au ${fr(b)} : ${num(s.qty)} ${U()} livrés, valeur ${fmt(s.val)}, avances ${fmt(s.av)}, déjà payé ${fmt(s.paid)}. Reste à payer : ${fmt(s.net)}.`);
+ $('vWa').onclick=()=>wa(h.tel,LANG==='ar'?`السلام عليكم ${h.name}، كشف ${c.name||'التعاونية'} من ${fr(a)} إلى ${fr(b)}: ${num(s.qty)} ${U()} مسلمة، القيمة ${fmt(s.val)}، التسبيقات ${fmt(s.av)}، المؤدى ${fmt(s.paid)}. الباقي للأداء: ${fmt(s.net)}.`:`Salam ${h.name}, relevé ${c.name||'de la coopérative'} du ${fr(a)} au ${fr(b)} : ${num(s.qty)} ${U()} livrés, valeur ${fmt(s.val)}, avances ${fmt(s.av)}, déjà payé ${fmt(s.paid)}. Reste à payer : ${fmt(s.net)}.`);
  show('view');}
 function wa(tel,msg){let t=String(tel||'').replace(/\D/g,'');if(!t)return alert("Pas de numéro de téléphone.");if(t.startsWith('0'))t='212'+t.slice(1);window.open('https://wa.me/'+t+'?text='+encodeURIComponent(msg),'_blank');}
 
@@ -239,9 +239,9 @@ function addLine(){editing.lines.push({l:'',q:1,u:U(),p:0});drawLines();}
 function saveInv(){const e=editing;e.buyer=+$('eBuyer').value;e.date=$('eDate').value;e.due=$('eDue').value;e.pay=$('ePay').value;e.notes=$('eNotes').value.trim();
  e.lines=e.lines.filter(l=>l.l.trim()&&+l.q>0);if(!e.lines.length)return alert('Ajoute au moins une ligne.');
  if(!e.id){e.id=Date.now();e.num=nextNum(e.date);db.inv.push(e);}else db.inv[db.inv.findIndex(i=>i.id===e.id)]=e;save();viewInv(e.id);}
-function viewInv(id){const i=db.inv.find(x=>x.id===id),b=db.buyers.find(x=>x.id==i.buyer)||{},c=db.coop,t=+i.tva;backTo='ventes';
+function viewInv(id){$('doc').setAttribute('data-nt','');const i=db.inv.find(x=>x.id===id),b=db.buyers.find(x=>x.id==i.buyer)||{},c=db.coop,t=+i.tva;backTo='ventes';
  $('doc').innerHTML=`<div class="hd"><div><h1>FACTURE</h1><p><b>N° ${i.num}</b><br>Date : ${fr(i.date)}<br>Échéance : ${fr(i.due)}</p></div>
- <div style="text-align:right"><b>${esc(c.name)}</b><br>Coopérative agricole<br>${esc(c.addr)}<br>${esc(c.tel)}</div></div>
+ <div style="text-align:end"><b>${esc(c.name)}</b><br>Coopérative agricole<br>${esc(c.addr)}<br>${esc(c.tel)}</div></div>
  <div style="margin-bottom:18px"><span class="muted">Facturé à</span><br><b>${esc(b.name)}</b><br>${esc(b.addr)}${b.ice?'<br>ICE : '+esc(b.ice):''}</div>
  <table><tr><th>Désignation</th><th class="right">Qté</th><th>Unité</th><th class="right">PU HT</th><th class="right">Total HT</th></tr>${i.lines.map(l=>`<tr><td>${esc(l.l)}</td><td class="right">${num(l.q)}</td><td>${esc(l.u)}</td><td class="right">${fmt(l.p)}</td><td class="right">${fmt(l.q*l.p)}</td></tr>`).join('')}</table>
  <table class="tot"><tr><td>Total HT</td><td class="right">${fmt(ht(i))}</td></tr><tr><td>TVA ${t?t+' %':''}</td><td class="right">${t?fmt(ht(i)*t/100):esc(c.tvatxt||'Exonéré')}</td></tr><tr><th>Total TTC</th><th class="right">${fmt(ttc(i))}</th></tr></table>
@@ -293,6 +293,77 @@ function demo(){if((db.adh.length||db.inv.length)&&!confirm('Remplacer les donn�
  db.buyers.push({id:1,name:'Laiterie Régionale (exemple)',ice:'',addr:'Zone industrielle',tel:''});save();show('dash');}
 show('dash');
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+</script>
+<script>
+// ===== Traduction arabe (عربي) =====
+const AR={
+'Gestion et facturation pour coopératives agricoles':'تدبير وفوترة التعاونيات الفلاحية',
+'Tableau de bord':'لوحة القيادة','Collecte':'التجميع','Adhérents':'المنخرطون','Paiement adhérents':'أداء المنخرطين','Ventes & factures':'المبيعات والفواتير','Ma coopérative':'تعاونيتي',
+'Mois':'الشهر','Collecte du mois':'تجميع الشهر','Dû aux adhérents (mois)':'المستحق للمنخرطين (الشهر)','Ventes facturées (mois)':'المبيعات المفوترة (الشهر)','Marge brute (mois)':'الهامش الإجمالي (الشهر)',
+'Ventes − achats aux adhérents':'المبيعات − المشتريات من المنخرطين','Factures clients impayées':'فواتير الزبناء غير المؤداة','Reste à payer aux adhérents':'الباقي للأداء للمنخرطين','Tous mois confondus':'جميع الشهور',
+'Top adhérents du mois':'أفضل المنخرطين هذا الشهر','Aucune livraison ce mois-ci.':'لا يوجد تسليم هذا الشهر.',
+'⬇ Export collecte (CSV)':'⬇ تصدير التجميع (CSV)','⬇ Export ventes (CSV)':'⬇ تصدير المبيعات (CSV)','⬇ Export paiements (CSV)':'⬇ تصدير الأداءات (CSV)',
+'Enregistrer une livraison':'تسجيل تسليم','Adhérent':'المنخرط','Date':'التاريخ','Quantité (':'الكمية (','Prix par':'الثمن لكل',')':')','(DH)':'(درهم)',
+'Qualité / remarque':'الجودة / ملاحظة','+ Enregistrer la livraison':'+ تسجيل التسليم','Avance ou retenue à un adhérent':'تسبيق أو اقتطاع لمنخرط',
+'Aliment de bétail, engrais, avance en espèces… Elle sera déduite au prochain paiement.':'علف الماشية، أسمدة، تسبيق نقدي… سيُخصم في الأداء القادم.',
+'Montant (DH)':'المبلغ (درهم)','Motif':'السبب','+ Enregistrer l\'avance':'+ تسجيل التسبيق','Derniers mouvements':'آخر العمليات','Mouvement':'العملية','Montant':'المبلغ',
+'Nouvel adhérent':'منخرط جديد','Nom et prénom':'الاسم الكامل','CIN':'رقم البطاقة الوطنية','Téléphone (WhatsApp)':'الهاتف (واتساب)','Douar / commune':'الدوار / الجماعة','+ Ajouter':'+ إضافة',
+'Douar':'الدوار','Livré (total)':'المُسلَّم (المجموع)','Solde dû':'الرصيد المستحق',
+'Relevés de paiement':'كشوفات الأداء','Période du':'الفترة من','au':'إلى','Calculer':'احسب',
+'Pour chaque adhérent : valeur des livraisons − avances de la période − paiements déjà faits pour la période.':'لكل منخرط: قيمة التسليمات − تسبيقات الفترة − ما تم أداؤه عن الفترة.',
+'Livré':'المُسلَّم','Valeur':'القيمة','Avances':'التسبيقات','Déjà payé':'المؤدى سابقاً','Net à payer':'الصافي للأداء','Relevé':'الكشف','Payer':'أداء','Réglé':'مؤدى',
+'Total net à payer':'مجموع الصافي للأداء','Aucun mouvement sur cette période.':'لا توجد عمليات في هذه الفترة.',
+'+ Nouvelle facture':'+ فاتورة جديدة','Acheteurs':'المشترون','Raison sociale':'الاسم التجاري','ICE (15 chiffres)':'ICE (15 رقماً)','Adresse':'العنوان','Contact':'الاتصال',
+'+ Ajouter l\'acheteur':'+ إضافة المشتري','Factures':'الفواتير','Aucune facture.':'لا توجد فواتير.','N°':'رقم','Acheteur':'المشتري','TTC':'المجموع مع الضريبة','Statut':'الحالة',
+'Payée':'مؤداة','En retard':'متأخرة','À payer':'للأداء',
+'Nouvelle facture':'فاتورة جديدة','Échéance':'تاريخ الاستحقاق','Mode de paiement':'طريقة الأداء','Virement':'تحويل بنكي','Chèque':'شيك','Espèces':'نقداً','Effet':'كمبيالة',
+'Désignation':'البيان','Qté':'الكمية','Unité':'الوحدة','PU HT (DH)':'ثمن الوحدة دون ضريبة (درهم)','Total HT':'المجموع دون ضريبة','+ Ligne':'+ سطر','Notes (optionnel)':'ملاحظات (اختياري)',
+'Enregistrer la facture':'حفظ الفاتورة','Annuler':'إلغاء','← Retour':'→ رجوع','🖨 Imprimer / PDF':'🖨 طباعة / PDF','Modifier':'تعديل','Marquer payée':'تسجيل كمؤداة','Marquer impayée':'تسجيل كغير مؤداة','📲 Envoyer par WhatsApp':'📲 إرسال عبر واتساب',
+'Ces informations apparaissent sur les factures et relevés.':'تظهر هذه المعلومات في الفواتير والكشوفات.','Nom de la coopérative':'اسم التعاونية','Produit principal':'المنتوج الرئيسي','Unité de collecte':'وحدة التجميع',
+'Prix par défaut payé aux adhérents (DH / unité)':'الثمن الافتراضي المؤدى للمنخرطين (درهم / وحدة)','Identifiant fiscal (IF)':'التعريف الضريبي (IF)','N° d\'immatriculation au registre des coopératives':'رقم التسجيل في سجل التعاونيات',
+'Téléphone':'الهاتف','RIB':'رقم الحساب البنكي (RIB)','TVA appliquée sur les ventes':'الضريبة على القيمة المضافة على المبيعات','Exonéré / non applicable':'معفى / غير مطبق','Mention TVA sur la facture (si exonéré)':'عبارة الضريبة في الفاتورة (في حالة الإعفاء)',
+'Enregistrer':'حفظ','Le régime de TVA dépend de ton activité et de ton chiffre d\'affaires : fais valider le taux et la mention par ton comptable.':'نظام الضريبة على القيمة المضافة يتعلق بنشاطك ورقم معاملاتك: تحقق من النسبة والعبارة مع محاسبك.',
+'⬇ Sauvegarder les données':'⬇ حفظ نسخة من البيانات','Restaurer':'استرجاع','Charger des données d\'exemple':'تحميل بيانات تجريبية','Les données restent dans ce navigateur. Pense à sauvegarder régulièrement.':'البيانات تبقى في هذا المتصفح. احفظ نسخة بانتظام.',
+'Complète la fiche de ta coopérative (nom, ICE) pour éditer des factures.':'أكمل بطاقة تعاونيتك (الاسم، ICE) لإصدار الفواتير.',
+'Ce mois-ci, la coopérative a payé plus à ses adhérents qu’elle n’a facturé à ses acheteurs.':'هذا الشهر، أدت التعاونية لمنخرطيها أكثر مما فوترت لمشتريها.',
+'RELEVÉ ADHÉRENT':'كشف المنخرط','Quantité livrée':'الكمية المسلمة','Valeur des livraisons':'قيمة التسليمات','Reste à payer':'الباقي للأداء','Signature de l\'adhérent :':'توقيع المنخرط:','Détail':'التفاصيل',
+'✓ Enregistré':'✓ تم الحفظ','Total HT :':'المجموع دون ضريبة:',
+// fenêtres
+"Ajoute d'abord des adhérents.":'أضف المنخرطين أولاً.',"Ajoute d'abord un acheteur.":'أضف مشترياً أولاً.',"Cet adhérent a des mouvements, il ne peut pas être supprimé.":'لهذا المنخرط عمليات، لا يمكن حذفه.',
+"Complète d'abord la fiche de la coopérative (nom et ICE).":'أكمل أولاً بطاقة التعاونية (الاسم و ICE).',"L'ICE doit contenir 15 chiffres.":'يجب أن يتكون ICE من 15 رقماً.',"Pas de numéro de téléphone.":'لا يوجد رقم هاتف.',
+'Ajoute au moins une ligne.':'أضف سطراً واحداً على الأقل.','Données restaurées.':'تم استرجاع البيانات.','Fichier invalide.':'ملف غير صالح.','Montant invalide':'مبلغ غير صالح','Montant requis':'المبلغ مطلوب','Nom requis':'الاسم مطلوب',
+'Quantité et prix requis':'الكمية والثمن مطلوبان','Remplacer les données actuelles par un exemple ?':'استبدال البيانات الحالية ببيانات تجريبية؟','Supprimer ?':'حذف؟','Supprimer ce mouvement ?':'حذف هذه العملية؟',
+'Mode de paiement (Espèces, Virement, Chèque) :':'طريقة الأداء (نقداً، تحويل، شيك):',
+// textes d'aide
+'ex : Lait cru, olives, argan, miel…':'مثال: حليب، زيتون، أركان، عسل…','ex : Laiterie, huilerie, grossiste…':'مثال: معمل الحليب، معصرة، بائع بالجملة…','ex : bonne, acidité 0,8…':'مثال: جيدة، حموضة 0.8…',
+'ex : 2 sacs d\'aliment':'مثال: كيسان من العلف','🔍 Rechercher un adhérent…':'🔍 البحث عن منخرط…','ex : Exonéré de TVA – art. … du CGI':'مثال: معفى من الضريبة على القيمة المضافة'
+};
+const RX=[
+ [/^(\d+) facture\(s\), dont (\d+) en retard$/,(m,a,b)=>`${a} فاتورة، منها ${b} متأخرة`],
+ [/^Livraison (.+) × (.+?)( \((.*)\))?$/,(m,a,b,c,d)=>`تسليم ${a} × ${b}${d?' ('+d+')':''}`],
+ [/^Livraison (.+) × (.+?)( · (.*))?$/,(m,a,b,c,d)=>`تسليم ${a} × ${b}${d?' · '+d:''}`],
+ [/^Avance · (.*)$/,(m,a)=>'تسبيق · '+a],[/^Avance : (.*)$/,(m,a)=>'تسبيق: '+a],[/^Paiement \((.*)\)$/,(m,a)=>'أداء ('+tr(a)+')'],
+ [/^Période du (.+) au (.+)$/,(m,a,b)=>`الفترة من ${a} إلى ${b}`],[/^CIN : (.*) · (.*)$/,(m,a,b)=>`رقم البطاقة: ${a} · ${b}`],[/^CIN (.*) ·$/,(m,a)=>`رقم البطاقة ${a} ·`],
+ [/^Modifier (.+)$/,(m,a)=>'تعديل '+a],[/^Montant payé à (.+) \(DH\) :$/,(m,a)=>`المبلغ المؤدى لـ ${a} (درهم):`],
+ [/^(\d+) facture\(s\) client en retard de paiement pour (.+)\.$/,(m,a,b)=>`${a} فاتورة زبون متأخرة الأداء بمبلغ ${b}.`],
+ [/^· TVA (.*) : (.*) ·$/,(m,a,b)=>`· الضريبة ${a}: ${b} ·`],[/^TTC : (.*)$/,(m,a)=>'المجموع مع الضريبة: '+a],
+ [/^✓ (.+) : (.+)$/,(m,a,b)=>`✓ ${a}: ${b}`],
+];
+function tr(s){if(LANG!=='ar'||s==null)return s;const k=String(s),t=k.trim();if(!t)return k;let r=AR[t];
+ if(r===undefined)for(const [re,f] of RX){if(re.test(t)){r=t.replace(re,f);break;}}
+ if(r===undefined)r=t;r=r.replace(/(\d) DH\b/g,'$1 درهم');return r===t?k:k.replace(t,r);}
+let LANG=localStorage.getItem('taawon_lang')||'fr';
+function translate(root){if(LANG!=='ar')return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
+ while(n=w.nextNode()){const p=n.parentElement;if(!p||p.closest('script,style,[data-nt]'))continue;const v=tr(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v;}
+ (root.querySelectorAll?root:document).querySelectorAll('[placeholder]').forEach(e=>{if(!e.closest('[data-nt]')){const v=tr(e.placeholder);if(v!==e.placeholder)e.placeholder=v;}});}
+const _a=window.alert,_c=window.confirm,_p=window.prompt;
+window.alert=m=>_a(tr(m));window.confirm=m=>_c(tr(m));window.prompt=(m,d)=>_p(tr(m),d);
+new MutationObserver(ms=>{if(LANG!=='ar')return;ms.forEach(m=>{if(m.type==='characterData')translate(m.target.parentElement||document.body);else m.addedNodes.forEach(n=>n.nodeType===1?translate(n):n.nodeType===3&&n.parentElement&&translate(n.parentElement));});})
+ .observe(document.body,{childList:true,subtree:true,characterData:true});
+function setLang(l){localStorage.setItem('taawon_lang',l);location.reload();}
+document.documentElement.lang=LANG;document.documentElement.dir=LANG==='ar'?'rtl':'ltr';
+$('langBtn').textContent=LANG==='ar'?'Français':'عربي';$('langBtn').onclick=()=>setLang(LANG==='ar'?'fr':'ar');
+translate(document.body);
 </script>
 </body>
 </html>
