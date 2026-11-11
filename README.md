@@ -10,4 +10,4 @@ Application web (installable sur téléphone) de gestion et de facturation pour 
 
 Les données restent sur l'appareil (localStorage). Fonctionne hors ligne une fois installée.
 
-Application en ligne : https://charikafilahia.netlify.app — sur le téléphone, ouvrir le lien puis « Installer l'application » / « Ajouter à l'écran d'accueil ».
+Application en ligne : https://charikatii.netlify.app — sur le téléphone, ouvrir le lien puis « Installer l'application » / « Ajouter à l'écran d'accueil ».
