@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b5e20"><link rel="apple-touch-icon" href="icon-192.png">
+<script src="supabase.js"></script><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b5e20"><link rel="apple-touch-icon" href="icon-192.png">
 <title>Taawon – Gestion de coopérative agricole</title>
 <style>
 :root{--p:#2e7d32;--d:#1b5e20;--r:#c0392b;--o:#d68910;--bg:#f4f7f2;--t:#1b2418;--m:#667061}
@@ -35,10 +35,21 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 </style>
 </head>
 <body>
-<header><button id="langBtn" class="noprint" style="float:inline-end;background:#ffffff22;color:#fff;border:1px solid #ffffff66">عربي</button><h1>Taawon 🌾</h1><small>Gestion et facturation pour coopératives agricoles</small></header>
+<header><button id="langBtn" class="noprint" style="float:inline-end;background:#ffffff22;color:#fff;border:1px solid #ffffff66">عربي</button><h1>Taawon 🌾 <small id="syncSt" style="font-size:12px;font-weight:400;opacity:.9"></small></h1><small>Gestion et facturation pour coopératives agricoles</small></header>
 <nav class="noprint">
  <button data-t="dash" class="on">Tableau de bord</button><button data-t="collecte">Collecte</button><button data-t="adherents">Adhérents</button><button data-t="paie">Paiement adhérents</button><button data-t="ventes">Ventes & factures</button><button data-t="coop">Ma coopérative</button>
 </nav>
+<div id="auth" class="hidden" style="position:fixed;inset:0;background:var(--bg);z-index:10;overflow:auto">
+ <div style="max-width:420px;margin:40px auto;padding:16px">
+  <div class="card"><h2>Connexion à Taawon</h2>
+   <p class="muted">Un compte par coopérative. Utilise le même compte sur tous les téléphones de la coopérative.</p>
+   <label>E-mail</label><input id="auEmail" type="email" autocomplete="username">
+   <label>Mot de passe (6 caractères minimum)</label><input id="auPass" type="password" autocomplete="current-password">
+   <div class="row"><button class="pri" onclick="doLogin()">Se connecter</button><button onclick="doSignup()">Créer un compte</button></div>
+   <p id="auMsg" class="muted" style="margin-top:10px"></p>
+   <p class="muted"><a href="#" onclick="setLang(LANG==='ar'?'fr':'ar');return false">عربي / Français</a> · <a href="privacy.html" target="_blank">Politique de confidentialité</a></p>
+  </div></div></div>
+<div id="subBanner" class="hidden" style="background:#fdecea;color:#c0392b;padding:10px 16px;font-weight:600;text-align:center"></div>
 <main>
 
 <!-- TABLEAU DE BORD -->
@@ -143,6 +154,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
   </div>
   <button class="pri" onclick="saveCoop()">Enregistrer</button> <span id="cSaved" class="muted"></span>
   <p class="muted">Le régime de TVA dépend de ton activité et de ton chiffre d'affaires : fais valider le taux et la mention par ton comptable.</p></div>
+ <div class="card hidden" id="acctCard"><h2>Compte et abonnement</h2><p id="acctInfo"></p><div class="row"><button onclick="syncNow(true)">🔄 Synchroniser</button><button class="del" onclick="logout()">Se déconnecter</button></div></div>
  <div class="card"><div class="row"><button onclick="backup()">⬇ Sauvegarder les données</button><label class="row" style="color:var(--t)"><input type="file" accept=".json" onchange="restore(this)" style="width:auto"> Restaurer</label><button onclick="demo()">Charger des données d'exemple</button></div>
   <p class="muted">Les données restent dans ce navigateur. Pense à sauvegarder régulièrement.</p><p class="muted"><a href="privacy.html" target="_blank">Politique de confidentialité</a></p></div>
 </section>
@@ -152,7 +164,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 const K='taawon_v1';
 const blank=()=>({coop:{unit:'L',tva:'0',tvatxt:'Exonéré de TVA'},adh:[],liv:[],av:[],pay:[],buyers:[],inv:[],seq:{}});
 let db=JSON.parse(localStorage.getItem(K)||'null')||blank();
-const save=()=>localStorage.setItem(K,JSON.stringify(db));
+const save=()=>{localStorage.setItem(K,JSON.stringify(db));if(window.onSave)onSave();};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const fmt=n=>(Number(n)||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2})+' DH';
@@ -167,7 +179,7 @@ const inRange=(d,a,b)=>d>=a&&d<=b;
 let editing=null,backTo='ventes';
 
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.t));
-function show(t){['dash','collecte','adherents','paie','ventes','edit','view','coop'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+function show(t){window.curView=t;['dash','collecte','adherents','paie','ventes','edit','view','coop'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t||(b.dataset.t==='ventes'&&t==='edit')));
  document.querySelectorAll('.unit').forEach(e=>e.textContent=U());
  ({dash:renderDash,collecte:renderCollecte,adherents:renderAdh,paie:renderPaie,ventes:renderVentes,coop:loadCoop})[t]?.();}
@@ -185,7 +197,7 @@ function balance(id){return db.liv.filter(l=>l.adh==id).reduce((s,l)=>s+l.q*l.p,
 function renderAdh(){const q=$('hq').value.toLowerCase();
  $('hList').innerHTML='<tr><th>Adhérent</th><th>Douar</th><th class="right">Livré (total)</th><th class="right">Solde dû</th><th></th></tr>'+db.adh.filter(a=>(a.name+a.vil+a.cin).toLowerCase().includes(q)).map(a=>{const tq=db.liv.filter(l=>l.adh==a.id).reduce((s,l)=>s+l.q,0);
  return `<tr><td><b>${esc(a.name)}</b><div class="muted">CIN ${esc(a.cin)||'—'} · ${esc(a.tel)}</div></td><td>${esc(a.vil)}</td><td class="right">${num(tq)} ${U()}</td><td class="right">${fmt(balance(a.id))}</td><td><button class="del" onclick="delAdh(${a.id})">🗑</button></td></tr>`}).join('');}
-function delAdh(id){if(db.liv.some(l=>l.adh==id)||db.av.some(a=>a.adh==id))return alert("Cet adhérent a des mouvements, il ne peut pas être supprimé.");if(confirm('Supprimer ?')){db.adh=db.adh.filter(a=>a.id!==id);save();renderAdh();}}
+function delAdh(id){if(db.liv.some(l=>l.adh==id)||db.av.some(a=>a.adh==id))return alert("Cet adhérent a des mouvements, il ne peut pas être supprimé.");if(confirm('Supprimer ?')){db.del=(db.del||[]).concat('adh:'+id);db.adh=db.adh.filter(a=>a.id!==id);save();renderAdh();}}
 
 // Collecte & avances
 function renderCollecte(){if(!db.adh.length){alert("Ajoute d'abord des adhérents.");return show('adherents');}
@@ -196,7 +208,7 @@ function addLiv(){const q=+$('lQty').value,p=+$('lPrice').value;if(!(q>0)||!(p>=
  db.liv.push({id:Date.now(),adh:+$('lAdh').value,date:$('lDate').value,q,p,note:$('lNote').value.trim()});$('lQty').value=$('lNote').value='';save();
  $('lMsg').textContent='✓ '+adhName($('lAdh').value)+' : '+num(q)+' '+U();renderCollecte();$('lQty').focus();}
 function addAv(){const a=+$('aAmt').value;if(!(a>0))return alert('Montant requis');db.av.push({id:Date.now(),adh:+$('aAdh').value,date:$('aDate').value,amt:a,note:$('aNote').value.trim()});$('aAmt').value=$('aNote').value='';save();renderCollecte();}
-function delMv(t,id){if(!confirm('Supprimer ce mouvement ?'))return;if(t==='L')db.liv=db.liv.filter(x=>x.id!==id);else db.av=db.av.filter(x=>x.id!==id);save();renderCollecte();}
+function delMv(t,id){if(!confirm('Supprimer ce mouvement ?'))return;db.del=(db.del||[]).concat((t==='L'?'liv:':'av:')+id);if(t==='L')db.liv=db.liv.filter(x=>x.id!==id);else db.av=db.av.filter(x=>x.id!==id);save();renderCollecte();}
 
 // Paiement adhérents
 function period(){if(!$('pFrom').value){const d=new Date(),y=d.getFullYear(),m=d.getMonth(),z=n=>String(n).padStart(2,'0');
@@ -364,6 +376,84 @@ function setLang(l){localStorage.setItem('taawon_lang',l);location.reload();}
 document.documentElement.lang=LANG;document.documentElement.dir=LANG==='ar'?'rtl':'ltr';
 $('langBtn').textContent=LANG==='ar'?'Français':'عربي';$('langBtn').onclick=()=>setLang(LANG==='ar'?'fr':'ar');
 translate(document.body);
+</script>
+<script>
+// ===== Comptes, sauvegarde en ligne et abonnement (Supabase) =====
+// Renseigner ces deux valeurs (Supabase → Project Settings → API). La clé "anon" est publique par conception.
+const SB_URL='';
+const SB_KEY='';
+const CONTACT='';            // ex : téléphone WhatsApp affiché quand l'abonnement est expiré
+const COLS=['adh','liv','av','pay','buyers','inv'];
+let sb=null,user=null,syncing=false,syncTimer=null;
+
+// --- accès serveur (isolé pour pouvoir être simulé en test) ---
+window.api={
+ async getRow(){const {data,error}=await sb.from('coops').select('data,version,active_until,plan').eq('owner',user.id).maybeSingle();if(error)throw error;return data;},
+ async insertRow(d){const {data,error}=await sb.from('coops').insert({owner:user.id,data:d,version:1}).select('data,version,active_until,plan').single();if(error)throw error;return data;},
+ async updateRow(d,from){const {data,error}=await sb.from('coops').update({data:d,version:from+1,updated_at:new Date().toISOString()}).eq('owner',user.id).eq('version',from).select('version,active_until,plan');if(error)throw error;return data&&data[0]||null;}
+};
+
+// --- fusion : union par identifiant, la version locale l'emporte, suppressions respectées ---
+function mergeData(remote,local){const r=JSON.parse(JSON.stringify(remote||{})),out=Object.assign(blank(),r);
+ const del=[...new Set([...(r.del||[]),...(local.del||[])])].slice(-2000);out.del=del;const gone=new Set(del);
+ for(const c of COLS){const m=new Map();(r[c]||[]).forEach(x=>m.set(String(x.id),x));(local[c]||[]).forEach(x=>m.set(String(x.id),x));
+  const key=c==='adh'?'adh':c==='liv'?'liv':c==='av'?'av':c;out[c]=[...m.values()].filter(x=>!gone.has(key+':'+x.id));}
+ out.coop=local._dirty?Object.assign({},r.coop,local.coop):Object.assign({},local.coop,r.coop);
+ out.seq=Object.assign({},r.seq);for(const k in (local.seq||{}))out.seq[k]=Math.max(out.seq[k]||0,local.seq[k]);
+ return out;}
+const strip=d=>{const o=Object.assign({},d);delete o._v;delete o._dirty;delete o._sub;delete o._plan;return o;};
+
+function setSt(t){const e=$('syncSt');if(e)e.textContent=tr(t);}
+window.onSave=()=>{if(!sb||!user)return;db._dirty=true;localStorage.setItem(K,JSON.stringify(db));setSt('⏳ À synchroniser');clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,1500);};
+async function syncNow(manual){if(!user||syncing)return;if(!navigator.onLine){setSt('⚠ Hors ligne');return;}syncing=true;setSt('⏳ Synchronisation…');
+ try{for(let i=0;i<4;i++){let row=await api.getRow();
+   if(!row){row=await api.insertRow(strip(db));db._v=row.version;db._dirty=false;applySub(row);break;}
+   applySub(row);
+   if(row.version!==db._v){const merged=mergeData(row.data,db);const wasDirty=db._dirty||db._v===undefined&&(db.adh.length||db.inv.length);
+    db=Object.assign(merged,{_v:row.version,_dirty:!!wasDirty,_sub:db._sub,_plan:db._plan});}
+   if(!db._dirty){break;}
+   const up=await api.updateRow(strip(db),db._v);if(up){db._v=up.version;db._dirty=false;applySub(up);break;}
+  }
+  localStorage.setItem(K,JSON.stringify(db));setSt('☁ Synchronisé');refreshView();
+ }catch(e){console.warn(e);setSt('⚠ Erreur de synchronisation');if(manual)alert(tr('La synchronisation a échoué. Vérifie ta connexion.'));}
+ finally{syncing=false;}}
+function refreshView(){const v=window.curView;if(v&&!['edit','view'].includes(v))show(v);renderAcct();}
+function applySub(row){if(row&&row.active_until){db._sub=row.active_until;db._plan=row.plan;}checkSub();}
+function expired(){return !!(user&&db._sub&&db._sub<today());}
+function checkSub(){const b=$('subBanner');if(!b)return;if(expired()){b.textContent=tr('Abonnement expiré le')+' '+fr(db._sub)+'. '+tr('Les données restent consultables. Contacte-nous pour renouveler')+(CONTACT?' : '+CONTACT:'.');b.classList.remove('hidden');}else b.classList.add('hidden');}
+function renderAcct(){const c=$('acctCard');if(!c)return;c.classList.toggle('hidden',!user);if(!user)return;
+ $('acctInfo').innerHTML=`${esc(user.email)}<br>${tr('Formule')} : <b>${esc(db._plan||'—')}</b> · ${tr('Valable jusqu\'au')} : <b>${db._sub?fr(db._sub):'—'}</b>`;translate($('acctCard'));}
+// bloque les modifications si l'abonnement est expiré (le serveur refuse aussi)
+['addLiv','addAv','addAdh','saveInv','payAdh','addBuyer','saveCoop','newInv','demo','delAdh','delMv'].forEach(f=>{const o=window[f];if(typeof o==='function')window[f]=function(...a){if(expired())return alert(tr('Abonnement expiré : les modifications sont bloquées.'));return o.apply(this,a);};});
+
+// --- connexion ---
+function authMsg(t){$('auMsg').textContent=tr(t);}
+async function doLogin(){authMsg('Connexion…');const {data,error}=await sb.auth.signInWithPassword({email:$('auEmail').value.trim(),password:$('auPass').value});
+ if(error)return authMsg(error.message.includes('Invalid')?'E-mail ou mot de passe incorrect.':error.message.includes('confirm')?'Confirme d\'abord ton e-mail (lien reçu par e-mail).':error.message);onLogged(data.user);}
+async function doSignup(){const em=$('auEmail').value.trim(),pw=$('auPass').value;if(!em||pw.length<6)return authMsg('E-mail et mot de passe de 6 caractères minimum.');
+ authMsg('Création du compte…');const {data,error}=await sb.auth.signUp({email:em,password:pw});if(error)return authMsg(error.message);
+ if(!data.session)return authMsg('Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis connecte-toi.');onLogged(data.user);}
+function onLogged(u){user=u;const owner=localStorage.getItem('taawon_owner');
+ if(owner&&owner!==u.id){db=blank();localStorage.setItem(K,JSON.stringify(db));}   // autre coopérative : on repart de zéro
+ localStorage.setItem('taawon_owner',u.id);$('auth').classList.add('hidden');checkSub();renderAcct();syncNow();}
+async function logout(){if(!confirm(tr('Se déconnecter ? Les données non synchronisées de ce téléphone seront perdues.')))return;if(db._dirty)await syncNow();
+ await sb.auth.signOut();localStorage.removeItem(K);localStorage.removeItem('taawon_owner');location.reload();}
+
+Object.assign(AR,{'Connexion à Taawon':'الدخول إلى تعاون','Un compte par coopérative. Utilise le même compte sur tous les téléphones de la coopérative.':'حساب واحد لكل تعاونية. استعمل نفس الحساب في جميع هواتف التعاونية.',
+ 'E-mail':'البريد الإلكتروني','Mot de passe (6 caractères minimum)':'كلمة المرور (6 أحرف على الأقل)','Se connecter':'دخول','Créer un compte':'إنشاء حساب','Connexion…':'جاري الدخول…','Création du compte…':'جاري إنشاء الحساب…',
+ 'E-mail ou mot de passe incorrect.':'البريد الإلكتروني أو كلمة المرور غير صحيحة.','Confirme d\'abord ton e-mail (lien reçu par e-mail).':'أكّد بريدك الإلكتروني أولاً (الرابط المرسل إليك).',
+ 'E-mail et mot de passe de 6 caractères minimum.':'البريد الإلكتروني وكلمة مرور من 6 أحرف على الأقل.','Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis connecte-toi.':'تم إنشاء الحساب. افتح الرابط المرسل إلى بريدك لتأكيده ثم ادخل.',
+ 'Compte et abonnement':'الحساب والاشتراك','🔄 Synchroniser':'🔄 مزامنة','Se déconnecter':'خروج','Formule':'الصيغة','Valable jusqu\'au':'صالح إلى غاية',
+ '☁ Synchronisé':'☁ متزامن','⏳ À synchroniser':'⏳ في انتظار المزامنة','⏳ Synchronisation…':'⏳ جاري المزامنة…','⚠ Hors ligne':'⚠ بدون اتصال','⚠ Erreur de synchronisation':'⚠ خطأ في المزامنة',
+ 'La synchronisation a échoué. Vérifie ta connexion.':'فشلت المزامنة. تحقق من الاتصال.','Abonnement expiré le':'انتهى الاشتراك في','Les données restent consultables. Contacte-nous pour renouveler':'يمكن الاطلاع على البيانات. اتصل بنا للتجديد',
+ 'Abonnement expiré : les modifications sont bloquées.':'الاشتراك منتهٍ: التعديلات موقوفة.','Se déconnecter ? Les données non synchronisées de ce téléphone seront perdues.':'الخروج؟ ستضيع البيانات غير المتزامنة في هذا الهاتف.'});
+
+// --- démarrage ---
+(async()=>{if(!SB_URL||!SB_KEY||!window.supabase)return;            // pas configuré : mode local uniquement
+ sb=supabase.createClient(SB_URL,SB_KEY);const {data}=await sb.auth.getSession();
+ if(data.session){onLogged(data.session.user);}else{$('auth').classList.remove('hidden');translate($('auth'));}
+ window.addEventListener('online',()=>syncNow());setInterval(()=>{if(document.visibilityState==='visible')syncNow();},60000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncNow();});})();
 </script>
 </body>
 </html>
