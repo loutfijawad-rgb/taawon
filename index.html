@@ -428,11 +428,23 @@ function renderAcct(){const c=$('acctCard');if(!c)return;c.classList.toggle('hid
 
 // --- connexion ---
 function authMsg(t){$('auMsg').textContent=tr(t);}
-async function doLogin(){authMsg('Connexion…');const {data,error}=await sb.auth.signInWithPassword({email:$('auEmail').value.trim(),password:$('auPass').value});
- if(error)return authMsg(error.message.includes('Invalid')?'E-mail ou mot de passe incorrect.':error.message.includes('confirm')?'Confirme d\'abord ton e-mail (lien reçu par e-mail).':error.message);onLogged(data.user);}
+function authErr(e){const m=String(e&&e.message||e||'');console.warn('auth',e);
+ if(/Invalid login/i.test(m))return authMsg('E-mail ou mot de passe incorrect.');
+ if(/not confirmed|confirm/i.test(m))return authMsg('Confirme d\'abord ton e-mail (lien reçu par e-mail).');
+ if(/already registered|already exists/i.test(m))return authMsg('Ce compte existe déjà : clique sur « Se connecter ».');
+ if(/rate limit|too many/i.test(m))return authMsg('Trop de tentatives. Réessaie dans quelques minutes (ou désactive « Confirm email » dans Supabase).');
+ if(/sending.*email|confirmation email/i.test(m))return authMsg('Supabase n\'arrive pas à envoyer l\'e-mail de confirmation : désactive « Confirm email » dans Supabase.');
+ if(/signups not allowed|signup.*disabled/i.test(m))return authMsg('Les inscriptions sont désactivées dans Supabase (Authentication → Sign In / Providers).');
+ if(/password/i.test(m))return authMsg('Mot de passe refusé : utilise au moins 6 caractères.');
+ if(/fetch|network|Failed/i.test(m))return authMsg('Pas de connexion au serveur. Vérifie internet et réessaie.');
+ $('auMsg').textContent=tr('Erreur')+' : '+m;}
+async function doLogin(){const em=$('auEmail').value.trim(),pw=$('auPass').value;if(!em||!pw)return authMsg('E-mail et mot de passe de 6 caractères minimum.');authMsg('Connexion…');
+ try{const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});if(error)return authErr(error);onLogged(data.user);}catch(e){authErr(e);}}
 async function doSignup(){const em=$('auEmail').value.trim(),pw=$('auPass').value;if(!em||pw.length<6)return authMsg('E-mail et mot de passe de 6 caractères minimum.');
- authMsg('Création du compte…');const {data,error}=await sb.auth.signUp({email:em,password:pw});if(error)return authMsg(error.message);
- if(!data.session)return authMsg('Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis connecte-toi.');onLogged(data.user);}
+ authMsg('Création du compte…');
+ try{const {data,error}=await sb.auth.signUp({email:em,password:pw});if(error)return authErr(error);
+  if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0)return authMsg('Ce compte existe déjà : clique sur « Se connecter ».');
+  if(!data.session)return authMsg('Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis connecte-toi.');onLogged(data.user);}catch(e){authErr(e);}}
 function onLogged(u){user=u;const owner=localStorage.getItem('taawon_owner');
  if(owner&&owner!==u.id){db=blank();localStorage.setItem(K,JSON.stringify(db));}   // autre coopérative : on repart de zéro
  localStorage.setItem('taawon_owner',u.id);$('auth').classList.add('hidden');checkSub();renderAcct();syncNow();}
@@ -443,14 +455,14 @@ Object.assign(AR,{'Connexion à Taawon':'الدخول إلى تعاون','Un com
  'E-mail':'البريد الإلكتروني','Mot de passe (6 caractères minimum)':'كلمة المرور (6 أحرف على الأقل)','Se connecter':'دخول','Créer un compte':'إنشاء حساب','Connexion…':'جاري الدخول…','Création du compte…':'جاري إنشاء الحساب…',
  'E-mail ou mot de passe incorrect.':'البريد الإلكتروني أو كلمة المرور غير صحيحة.','Confirme d\'abord ton e-mail (lien reçu par e-mail).':'أكّد بريدك الإلكتروني أولاً (الرابط المرسل إليك).',
  'E-mail et mot de passe de 6 caractères minimum.':'البريد الإلكتروني وكلمة مرور من 6 أحرف على الأقل.','Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis connecte-toi.':'تم إنشاء الحساب. افتح الرابط المرسل إلى بريدك لتأكيده ثم ادخل.',
- 'Compte et abonnement':'الحساب والاشتراك','🔄 Synchroniser':'🔄 مزامنة','Se déconnecter':'خروج','Formule':'الصيغة','Valable jusqu\'au':'صالح إلى غاية',
+ 'Ce compte existe déjà : clique sur « Se connecter ».':'هذا الحساب موجود: اضغط على « دخول ».','Trop de tentatives. Réessaie dans quelques minutes (ou désactive « Confirm email » dans Supabase).':'محاولات كثيرة. أعد المحاولة بعد دقائق.','Pas de connexion au serveur. Vérifie internet et réessaie.':'لا يوجد اتصال بالخادم. تحقق من الإنترنت وأعد المحاولة.','Mot de passe refusé : utilise au moins 6 caractères.':'كلمة المرور مرفوضة: استعمل 6 أحرف على الأقل.','Erreur':'خطأ','Compte et abonnement':'الحساب والاشتراك','🔄 Synchroniser':'🔄 مزامنة','Se déconnecter':'خروج','Formule':'الصيغة','Valable jusqu\'au':'صالح إلى غاية',
  '☁ Synchronisé':'☁ متزامن','⏳ À synchroniser':'⏳ في انتظار المزامنة','⏳ Synchronisation…':'⏳ جاري المزامنة…','⚠ Hors ligne':'⚠ بدون اتصال','⚠ Erreur de synchronisation':'⚠ خطأ في المزامنة',
  'La synchronisation a échoué. Vérifie ta connexion.':'فشلت المزامنة. تحقق من الاتصال.','Abonnement expiré le':'انتهى الاشتراك في','Les données restent consultables. Contacte-nous pour renouveler':'يمكن الاطلاع على البيانات. اتصل بنا للتجديد',
  'Abonnement expiré : les modifications sont bloquées.':'الاشتراك منتهٍ: التعديلات موقوفة.','Se déconnecter ? Les données non synchronisées de ce téléphone seront perdues.':'الخروج؟ ستضيع البيانات غير المتزامنة في هذا الهاتف.'});
 
 // --- démarrage ---
 (async()=>{if(!SB_URL||!SB_KEY||!window.supabase)return;            // pas configuré : mode local uniquement
- sb=supabase.createClient(SB_URL,SB_KEY);const {data}=await sb.auth.getSession();
+ sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await sb.auth.getSession();
  if(data.session){onLogged(data.session.user);}else{$('auth').classList.remove('hidden');translate($('auth'));}
  window.addEventListener('online',()=>syncNow());setInterval(()=>{if(document.visibilityState==='visible')syncNow();},60000);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncNow();});})();
