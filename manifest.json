@@ -1,1 +1,69 @@
-{"name":"Taawon – Gestion de coopérative agricole","short_name":"Taawon","start_url":"./index.html","scope":"./","display":"standalone","background_color":"#f4f7f2","theme_color":"#1b5e20","lang":"fr","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+ "name": "Taawon – Gestion de coopérative agricole",
+ "short_name": "Taawon",
+ "start_url": "./index.html",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#f4f7f2",
+ "theme_color": "#1b5e20",
+ "lang": "fr",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "id": "./",
+ "description": "Gestion et facturation pour coopératives agricoles : collecte des adhérents, avances, relevés de paiement, factures aux acheteurs. En français et en arabe, fonctionne hors ligne.",
+ "categories": [
+  "business",
+  "productivity",
+  "finance"
+ ],
+ "orientation": "portrait",
+ "dir": "auto",
+ "screenshots": [
+  {
+   "src": "screenshots/1.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "Tableau de bord"
+  },
+  {
+   "src": "screenshots/2.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "Collecte"
+  },
+  {
+   "src": "screenshots/3.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "Relevé adhérent"
+  },
+  {
+   "src": "screenshots/4.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "Facture"
+  }
+ ]
+}
